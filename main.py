@@ -1,37 +1,70 @@
 import requests
 import json
 import config.api_key as api
+import pprint as pp
 
-# Access Token 발급 요청
-auth = requests.auth.HTTPBasicAuth(api.client["id"], api.client["secret"])
-data = {
-    'grant_type': 'client_credentials',
-    'client_id': api.client["id"],
-    'client_secret': api.client["secret"]
-}
-headers = {
-    'Content-Type': 'application/x-www-form-urlencoded'
-}
-response = requests.post('https://api.intra.42.fr/oauth/token', auth=auth, data=data, headers=headers)
+def get_title(data):
+    title = ''
+    i = 0
+    for t in data['titles_users']:
+        if t['selected'] is True:
+            title = data['titles'][i]['name']
+            return title
+        i += 1
+    return title
 
-# 발급된 Access Token
-access_token = response.json()['access_token']
+def get_user_data(user_id):
+    # Access Token 발급 요청
+    auth = requests.auth.HTTPBasicAuth(api.client["id"], api.client["secret"])
+    data = {
+        'grant_type': 'client_credentials',
+        'client_id': api.client["id"],
+        'client_secret': api.client["secret"]
+    }
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    response = requests.post('https://api.intra.42.fr/oauth/token', auth=auth, data=data, headers=headers)
 
-# 유저 이름
-username = 'seonhoki'
+    # 발급된 Access Token
+    access_token = response.json()['access_token']
 
-# API 요청 보내기
-headers = {
-    'Authorization': 'Bearer {}'.format(access_token)
-}
+    # API 요청 보내기
+    headers = {
+        'Authorization': 'Bearer {}'.format(access_token)
+    }
 
-campus_id = 29 # Seoul
-cursus_id = 21 # ???
+    response = requests.get(f'https://api.intra.42.fr/v2/users/{user_id}', headers=headers)
 
-response = requests.get('https://api.intra.42.fr/v2/users/{}/titles'.format(username), headers=headers)
-response = requests.get(f'https://api.intra.42.fr/v2/cursus_users?filter[campus_id]={campus_id}&filter[cursus_id]={cursus_id}&page[size]=1&page[number]=1', headers=headers)
+    # API 응답
+    data = response.json()
+    title = get_title(data)
 
-# API 응답
-data = response.json()
+    res = {
+        'user_id': data['login'],
+        'kind': data['kind'],
+        'is_staff': data['staff?'],
+        'is_active': data['active?'],
+        'grade': data['cursus_users'][1]['grade'],
+        'title': title,
+    }
+    return res
 
-print(data)
+def main():
+    user_id = "juha"
+    user_data = get_user_data(user_id)
+    pp.pprint(user_data)
+
+    user_id = "jinwoole"
+    user_data = get_user_data(user_id)
+    pp.pprint(user_data)
+
+    user_id = "seonhoki"
+    user_data = get_user_data(user_id)
+    pp.pprint(user_data)
+
+    user_id = "jekim"
+    user_data = get_user_data(user_id)
+    pp.pprint(user_data)
+
+main()
