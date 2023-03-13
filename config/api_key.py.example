@@ -1,0 +1,5 @@
+# 애플리케이션 UID와 Secret
+client = {
+	"id": "",
+	"secret": ""
+}
