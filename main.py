@@ -3,6 +3,7 @@ import json
 import config.api_key as api
 import pprint as pp
 
+# 선택된 Title 가져오기, 없다면 공백 return
 def get_title(data):
     title = ''
     i = 0
@@ -13,6 +14,7 @@ def get_title(data):
         i += 1
     return title
 
+# user_id를 받아 필요한 data를 dict로 return
 def get_user_data(user_id):
     # Access Token 발급 요청
     auth = requests.auth.HTTPBasicAuth(api.client["id"], api.client["secret"])
