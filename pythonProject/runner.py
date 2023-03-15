@@ -1,17 +1,18 @@
 import subprocess
 
-process = subprocess.Popen(["python", "recognizer.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+def main():
+    lock_flag = True
+    turtle_flag = True
 
-while True:
-    face_name = process.stdout.readline().strip()
+    if not lock_flag and not turtle_flag:
+        print("Error: Both lock_flag and turtle_flag are False. At least one should be True.")
+        return
 
-    if not face_name:
-        break
+    cmd = ["python", "face_recognition_pose.py", str(lock_flag), str(turtle_flag)]
+    process = subprocess.Popen(cmd)
 
+    # Wait for the process to complete
+    process.wait()
 
-
-
-    print(f"Face name received: {face_name}")
-
-return_code = process.wait()
-print(f"Recognizer process exited with code {return_code}")
+if __name__ == "__main__":
+    main()

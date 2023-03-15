@@ -23,6 +23,9 @@ REC_JITTER = 15;
 #안면인식 판단 정확도 -> 낮을수록 엄격
 STRICT_RATIO = 0.4;
 
+#안면인식 데이터 저장되는 곳
+encodings_path = "face_encodings.pkl"
+
 
 def initialize_face_recognition():
     face_detector = dlib.get_frontal_face_detector()
@@ -32,14 +35,13 @@ def initialize_face_recognition():
     shape_predictor = dlib.shape_predictor(shape_predictor_path)
     face_recognition_model = dlib.face_recognition_model_v1(face_recognition_model_path)
 
-    encodings_path = "face_encodings.pkl"
     if os.path.exists(encodings_path):
         with open(encodings_path, "rb") as f:
             face_encodings = pickle.load(f)
     else:
         face_encodings = {}
 
-    return face_detector, shape_predictor, face_recognition_model, face_encodings, encodings_path
+    return face_detector, shape_predictor, face_recognition_model, face_encodings
 
 
 def process_face_recognition(face_detector, shape_predictor, face_recognition_model, face_encodings, rgb_frame_small):
@@ -136,6 +138,13 @@ def draw_face_pose_information(image, results, mp_drawing, mp_face_mesh):
     return image
 
 def main():
+    if len(sys.argv) != 3:
+        print("Usage: python face_recognition_pose.py <lock_flag> <turtle_flag>")
+        sys.exit(1)
+
+    lock_flag = sys.argv[1].lower() == "true"
+    turtle_flag = sys.argv[2].lower() == "true"
+
     face_detector, shape_predictor, face_recognition_model, face_encodings = initialize_face_recognition()
     face_mesh, mp_drawing, mp_face_mesh = initialize_face_pose_estimation()
 
@@ -151,18 +160,25 @@ def main():
         frame_small = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
         rgb_frame_small = cv2.cvtColor(frame_small, cv2.COLOR_BGR2RGB)
 
-        face_rectangles, face_names = process_face_recognition(face_detector, shape_predictor, face_recognition_model, face_encodings, rgb_frame_small)
-        frame = draw_face_rectangles_and_names(frame, face_rectangles, face_names)
+        if lock_flag:
+            face_rectangles, face_names = process_face_recognition(face_detector, shape_predictor,
+                                                                   face_recognition_model, face_encodings,
+                                                                   rgb_frame_small)
+            frame = draw_face_rectangles_and_names(frame, face_rectangles, face_names)
 
-        image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = process_face_pose_estimation(face_mesh, image)
-        image = draw_face_pose_information(image, results, mp_drawing, mp_face_mesh)
+        if turtle_flag:
+            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = process_face_pose_estimation(face_mesh, image)
+            image = draw_face_pose_information(image, results, mp_drawing, mp_face_mesh)
+        else:
+            image = frame
+
         cv2.imshow('Combined Video Stream', image)
 
         key = cv2.waitKey(1) & 0xFF
         if key == ord("q"):
             break
-        elif key == ord("g"):
+        elif key == ord("g") and lock_flag:
             if len(face_rectangles) == 1:
                 shape = shape_predictor(rgb_frame_small, face_rectangles[0])
                 face_encoding = face_recognition_model.compute_face_descriptor(rgb_frame_small, shape)
@@ -175,6 +191,7 @@ def main():
 
     video_capture.release()
     cv2.destroyAllWindows()
+
 
 
 if __name__ == "__main__":
