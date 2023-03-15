@@ -5,6 +5,7 @@ import numpy as np
 import pickle
 import os
 import sys
+import time
 
 sys.path.insert(0, "face_recognition_package")
 sys.path.insert(0, "face_recognition_models_package")
@@ -27,7 +28,11 @@ else:
 
 video_capture = cv2.VideoCapture(0)
 
+...
+saved_name = None
+
 while True:
+    time.sleep(1)
     ret, frame = video_capture.read()
 
     if not ret or frame is None:
@@ -38,73 +43,31 @@ while True:
     rgb_frame_small = cv2.cvtColor(frame_small, cv2.COLOR_BGR2RGB)
 
     face_rectangles = face_detector(rgb_frame_small, 1)
-    face_names = []
 
-    for face_rectangle in face_rectangles:
+    if len(face_rectangles) > 0:
+        face_rectangle = face_rectangles[0]
         shape = shape_predictor(rgb_frame_small, face_rectangle)
-        face_encoding = face_recognition_model.compute_face_descriptor(rgb_frame_small, shape, num_jitters=10)
+        face_encoding = face_recognition_model.compute_face_descriptor(rgb_frame_small, shape, num_jitters=15)
         face_encoding = np.array(face_encoding)
 
-        if face_encodings:
-            face_distances = face_recognition.face_distance([enc for _, enc in face_encodings.items()], face_encoding)
-
-            if len(face_distances) > 0:
-                min_distance_index = np.argmin(face_distances)
-                min_distance = face_distances[min_distance_index]
-
-                if min_distance < 0.4:
-                    name = list(face_encodings.keys())[min_distance_index]
-                else:
-                    name = "Unknown Person"
-            else:
-                name = "Unknown Person"
-        else:
+        if saved_name is None:
             name = "Unknown Person"
-
-        face_names.append(name)
-
-    for face_rectangle, name in zip(face_rectangles, face_names):
-        left, top, right, bottom = face_rectangle.left(), face_rectangle.top(), face_rectangle.right(), face_rectangle.bottom()
-        left *= 4
-        right *= 4
-        top *= 4
-        bottom *= 4
-
-        if name == "Unknown":
-            rectangle_color = (0, 0, 255)
         else:
-            rectangle_color = (255, 0, 0)
+            name = saved_name
 
-        cv2.rectangle(frame, (left, top), (right, bottom), rectangle_color, 2)
-
-        text_width, text_height = cv2.getTextSize(name, cv2.FONT_HERSHEY_DUPLEX, 0.5, 1)[0]
-        cv2.rectangle(frame, (left, top - text_height - 10), (left + text_width + 12, top), rectangle_color, -1)
-
-        cv2.putText(frame, name, (left + 6, top - 6), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
-
-        # Display face size information
-        face_width = right - left
-        face_height = bottom - top
-        size_text = f"Size: {face_width}x{face_height}"
-        size_width, size_height = cv2.getTextSize(size_text, cv2.FONT_HERSHEY_DUPLEX, 0.5, 1)[0]
-        cv2.putText(frame, size_text, (left, bottom + size_height + 20), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255),
-                    1)
-
-    cv2.imshow("Video", frame)
-
-    key = cv2.waitKey(1) & 0xFF
-    if key == ord("q"):
-        break
-    elif key == ord("g"):
-        if len(face_rectangles) == 1:
-            shape = shape_predictor(rgb_frame_small, face_rectangles[0])
-            face_encoding = face_recognition_model.compute_face_descriptor(rgb_frame_small, shape)
-            face_encoding = np.array(face_encoding)
-            name = input("Enter the person's name: ")
-            face_encodings[name] = face_encoding
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord("q"):
+            break
+        elif key == ord("g") and saved_name is None:
+            saved_name = input("Enter the person's name: ")
+            face_encodings[saved_name] = face_encoding
 
             with open(encodings_path, "wb") as f:
                 pickle.dump(face_encodings, f)
+
+            # Sending string "a" to runner.py
+            sys.stdout.write("a")
+            sys.stdout.flush()
 
 video_capture.release()
 cv2.destroyAllWindows()

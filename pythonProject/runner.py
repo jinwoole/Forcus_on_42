@@ -8,6 +8,9 @@ while True:
     if not face_name:
         break
 
+
+
+
     print(f"Face name received: {face_name}")
 
 return_code = process.wait()
