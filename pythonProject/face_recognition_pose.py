@@ -7,6 +7,8 @@ import os
 import sys
 import mediapipe as mp
 import math
+import atexit #얼굴 정보 삭제를 위함
+import signal
 
 # Set the known distance between two facial landmarks in meters
 KNOWN_DISTANCE = 0.5
@@ -26,6 +28,12 @@ STRICT_RATIO = 0.4;
 #안면인식 데이터 저장되는 곳
 encodings_path = "face_encodings.pkl"
 
+def delete_face_encodings():
+    if os.path.exists(encodings_path):
+        os.remove(encodings_path)
+        print("face_encodings.pkl has been deleted.")
+    else:
+        print("face_encodings.pkl not found.")
 
 def initialize_face_recognition():
     face_detector = dlib.get_frontal_face_detector()
@@ -91,6 +99,7 @@ def draw_face_rectangles_and_names(frame, face_rectangles, face_names):
         text_width, text_height = cv2.getTextSize(name, cv2.FONT_HERSHEY_DUPLEX, 0.5, 1)[0]
         cv2.rectangle(frame, (left, top - text_height - 10), (left + text_width + 12, top), rectangle_color, -1)
 
+
         cv2.putText(frame, name, (left + 6, top - 6), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
 
     return frame
@@ -106,12 +115,14 @@ def process_face_pose_estimation(face_mesh, frame):
     results = face_mesh.process(frame)
     return results
 
-def draw_face_pose_information(image, results, mp_drawing, mp_face_mesh):
+def draw_face_pose_information(image, results, mp_drawing, mp_face_mesh, vertical_distance=None):  # Modify this line
+    distance = None
+    roll = None
+
     if results.multi_face_landmarks:
         for face_landmarks in results.multi_face_landmarks:
             mp_drawing.draw_landmarks(image, face_landmarks, mp_face_mesh.FACEMESH_TESSELATION)
 
-            # Calculate face angles
             x = []
             y = []
             z = []
@@ -123,24 +134,30 @@ def draw_face_pose_information(image, results, mp_drawing, mp_face_mesh):
             nose_tip = (x[5], y[5], z[5])
             left_eye = ((x[33] + x[133]) / 2, (y[33] + y[133]) / 2, (z[33] + z[133]) / 2)
             right_eye = ((x[362] + x[263]) / 2, (y[362] + y[263]) / 2, (z[362] + z[263]) / 2)
+            vertical_distance = y[5] * image.shape[0]
 
-            # Calculate face distance
             distance = (KNOWN_FACE_WIDTH * FOCAL_LENGTH) / (2 * (right_eye[0] - left_eye[0]))
-
-            # Calculate yaw
             roll = math.atan2(right_eye[1] - left_eye[1], right_eye[0] - left_eye[0])
 
-            # Draw face pose information
             cv2.putText(image, f"Distance: {distance:.2f} cm", (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            cv2.putText(image, f"Roll: {roll * 180 / math.pi:.2f} degrees", (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 1,
-                        (0, 255, 0), 2)
+            cv2.putText(image, f"Roll: {roll * 180 / math.pi:.2f} degrees", (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(image, f"Vertical Distance: {vertical_distance:.2f} pixels", (50, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)  # Add this line
 
-    return image
+    return image, distance, roll, vertical_distance
+
+
 
 def main():
     if len(sys.argv) != 3:
         print("Usage: python face_recognition_pose.py <lock_flag> <turtle_flag>")
         sys.exit(1)
+    def signal_handler(sig, frame):
+        delete_face_encodings()
+        sys.exit(0)
+
+    atexit.register(delete_face_encodings)
+    signal.signal(signal.SIGINT, signal_handler)
+
 
     lock_flag = sys.argv[1].lower() == "true"
     turtle_flag = sys.argv[2].lower() == "true"
@@ -150,12 +167,20 @@ def main():
 
     video_capture = cv2.VideoCapture(0)
 
+    init_mode = True
+    init_distance = None
+    init_roll = None
+    init_recognition_id = None
+
     while True:
         ret, frame = video_capture.read()
 
         if not ret or frame is None:
             print("Error: Unable to capture a frame from the webcam.")
             break
+
+        if init_mode:
+            cv2.putText(frame, "Press G when you are ready", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
         frame_small = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
         rgb_frame_small = cv2.cvtColor(frame_small, cv2.COLOR_BGR2RGB)
@@ -164,35 +189,73 @@ def main():
             face_rectangles, face_names = process_face_recognition(face_detector, shape_predictor,
                                                                    face_recognition_model, face_encodings,
                                                                    rgb_frame_small)
-            frame = draw_face_rectangles_and_names(frame, face_rectangles, face_names)
+            frame = draw_face_rectangles_and_names(frame, face_rectangles,
+                                                                      face_names)
 
         if turtle_flag:
             image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = process_face_pose_estimation(face_mesh, image)
-            image = draw_face_pose_information(image, results, mp_drawing, mp_face_mesh)
+            image, distance, roll, vertical_distance = draw_face_pose_information(image, results, mp_drawing, mp_face_mesh)
         else:
             image = frame
 
         cv2.imshow('Combined Video Stream', image)
 
         key = cv2.waitKey(1) & 0xFF
-        if key == ord("q"):
-            break
-        elif key == ord("g") and lock_flag:
-            if len(face_rectangles) == 1:
-                shape = shape_predictor(rgb_frame_small, face_rectangles[0])
-                face_encoding = face_recognition_model.compute_face_descriptor(rgb_frame_small, shape)
-                face_encoding = np.array(face_encoding)
-                name = input("Enter the person's name: ")
-                face_encodings[name] = face_encoding
-
+        if key == ord("g") and init_mode:
+            if not os.path.exists(encodings_path):
+                with open(encodings_path, "wb") as f:
+                    pickle.dump(face_encodings, f)
+            else:
                 with open(encodings_path, "wb") as f:
                     pickle.dump(face_encodings, f)
 
+            if lock_flag and not turtle_flag:
+                if len(face_rectangles) == 1:
+                    shape = shape_predictor(rgb_frame_small, face_rectangles[0])
+                    face_encoding = face_recognition_model.compute_face_descriptor(rgb_frame_small, shape)
+                    face_encoding = np.array(face_encoding)
+                    name = "init_user"
+                    face_encodings[name] = face_encoding
+
+                    init_recognition_id = name
+
+                    print(f"init_recognition_id: {init_recognition_id}")
+                    init_mode = False
+                else:
+                    print("Error: Unable to store init_user, make sure there's only one person in front of the camera")
+            elif not lock_flag and turtle_flag:
+                if results.multi_face_landmarks and len(results.multi_face_landmarks) == 1:
+                    init_distance = distance
+                    init_roll = roll
+                    init_vertical = vertical_distance
+
+                    init_mode = False
+                    print(f"init_distance: {init_distance}, init_roll: {init_roll}, init_vert: {init_vertical}")
+                else:
+                    print("Error: Unable to store init_distance and init_roll, make sure there's only one person in front of the camera")
+            elif lock_flag and turtle_flag:
+                if len(face_rectangles) == 1 and results.multi_face_landmarks and len(results.multi_face_landmarks) == 1:
+                    shape = shape_predictor(rgb_frame_small, face_rectangles[0])
+                    face_encoding = face_recognition_model.compute_face_descriptor(rgb_frame_small, shape)
+                    face_encoding = np.array(face_encoding)
+                    name = "init_user"
+                    face_encodings[name] = face_encoding
+
+                    init_distance = distance
+                    init_roll = roll
+                    init_vertical = vertical_distance
+                    init_recognition_id = name
+
+                    init_mode = False
+                    print(f"init_recognition_id: {init_recognition_id}, init_distance: {init_distance}, init_roll: {init_roll}, init_vert: {init_vertical}")
+                else:
+                    print("Error: Unable to store init_user, init_distance, and init_roll, make sure there's only one person in front of the camera")
+            else:
+                print("Error: Invalid configuration. Please set at least one of lock_flag or turtle_flag to True.")
+
     video_capture.release()
     cv2.destroyAllWindows()
-
-
 
 if __name__ == "__main__":
     main()
