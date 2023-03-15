@@ -9,6 +9,8 @@ import mediapipe as mp
 import math
 import atexit #얼굴 정보 삭제를 위함
 import signal
+import time
+import pyautogui
 
 # Set the known distance between two facial landmarks in meters
 KNOWN_DISTANCE = 0.5
@@ -168,11 +170,16 @@ def main():
     video_capture = cv2.VideoCapture(0)
 
     init_mode = True
-    init_distance = None
-    init_roll = None
-    init_recognition_id = None
 
+    init_user_not_detected_counter = 0  #락스크린
     while True:
+        if not init_mode:
+            time.sleep(1)
+            if init_user_not_detected_counter >= 5:
+                pyautogui.hotkey('ctrl', 'command', 'q') #락스크린 하지만, 클러스터 맥에선 안될 확률 높음
+                #os.system("pmset displaysleepnow") 이 친구는 될것이지만, 디스플레이만 꺼준다. 해봐야 알것같다.
+
+                init_user_not_detected_counter = 0
         ret, frame = video_capture.read()
 
         if not ret or frame is None:
@@ -191,6 +198,12 @@ def main():
                                                                    rgb_frame_small)
             frame = draw_face_rectangles_and_names(frame, face_rectangles,
                                                                       face_names)
+
+            if not init_mode:
+                if init_recognition_id in face_names:  #락스크린
+                    init_user_not_detected_counter = 0
+                else:
+                    init_user_not_detected_counter += 1
 
         if turtle_flag:
             image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
