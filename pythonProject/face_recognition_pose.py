@@ -11,6 +11,7 @@ import atexit #얼굴 정보 삭제를 위함
 import signal
 import time #time.sleep() -> 대기 및
 import pyautogui #화면잠금 하려고 한건데, 클러스터 맥에선 권한문제때문에 displaysleep이 한계일듯
+import subprocess
 
 # pose 정보를 얻기 위한 단위 : 카메라와 유저 사이의 거리 변수
 KNOWN_DISTANCE = 0.5
@@ -29,6 +30,11 @@ STRICT_RATIO = 0.4;
 
 #안면인식 데이터 저장되는 곳
 encodings_path = "face_encodings.pkl"
+
+#거북목 변수
+DISTANCE_THRESHOLD = 10  # in centimeters
+ROLL_THRESHOLD = 10       # in degrees
+VERTICAL_THRESHOLD = 30   # in pixels
 
 def delete_face_encodings():
     if os.path.exists(encodings_path):
@@ -150,8 +156,6 @@ def draw_face_pose_information(image, results, mp_drawing, mp_face_mesh, vertica
 
     return image, distance, roll, vertical_distance
 
-
-
 def main():
     if len(sys.argv) != 3:
         print("Usage: python face_recognition_pose.py <lock_flag> <turtle_flag>")
@@ -179,9 +183,7 @@ def main():
         if not init_mode:
             time.sleep(1)
             if init_user_not_detected_counter >= 5:
-                #pyautogui.hotkey('ctrl', 'command', 'q') #락스크린 하지만, 클러스터 맥에선 안될 확률 높음
                 os.system("pmset displaysleepnow") #이 친구는 될것이지만, 디스플레이만 꺼준다. 해봐야 알것같다.
-
                 init_user_not_detected_counter = 0
         ret, frame = video_capture.read()
 
@@ -213,6 +215,19 @@ def main():
             image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = process_face_pose_estimation(face_mesh, image)
             image, distance, roll, vertical_distance = draw_face_pose_information(image, results, mp_drawing, mp_face_mesh)
+            #거북목 판별
+            if not init_mode:
+                if abs(distance - init_distance) > DISTANCE_THRESHOLD:
+                    os.system(
+                        "osascript -e 'display notification \"Alert! 거북목 경고!\"'")
+                if abs(roll - init_roll) * 180 / math.pi > ROLL_THRESHOLD:
+                    os.system(
+                        "osascript -e 'display notification \"Alert! 거북목 경고!\"'")
+                if abs(vertical_distance - init_vertical) > VERTICAL_THRESHOLD:
+                    os.system(
+                        "osascript -e 'display notification \"Alert! 거북목 경고!\"'")
+
+
         else:
             image = frame
 
