@@ -17,6 +17,9 @@ KNOWN_FACE_WIDTH = 0.15
 # Set the focal length of the camera in pixels
 FOCAL_LENGTH = 640
 
+gui_mode = True
+auto_lock_toggle = False
+anti_turtle_toggle = False
 
 def initialize_face_recognition():
     face_detector = dlib.get_frontal_face_detector()
@@ -36,13 +39,13 @@ def initialize_face_recognition():
     return face_detector, shape_predictor, face_recognition_model, face_encodings
 
 
-def process_face_recognition(face_detector, shape_predictor, face_recognition_model, face_encodings, rgb_frame_small):
-    face_rectangles = face_detector(rgb_frame_small, 1)
+def process_face_recognition(face_detector, shape_predictor, face_recognition_model, face_encodings, rgb_image_small):
+    face_rectangles = face_detector(rgb_image_small, 1)
     face_names = []
 
     for face_rectangle in face_rectangles:
-        shape = shape_predictor(rgb_frame_small, face_rectangle)
-        face_encoding = face_recognition_model.compute_face_descriptor(rgb_frame_small, shape, num_jitters=10)
+        shape = shape_predictor(rgb_image_small, face_rectangle)
+        face_encoding = face_recognition_model.compute_face_descriptor(rgb_image_small, shape, num_jitters=10)
         face_encoding = np.array(face_encoding)
 
         if face_encodings:
@@ -65,7 +68,7 @@ def process_face_recognition(face_detector, shape_predictor, face_recognition_mo
 
     return face_rectangles, face_names
 
-def draw_face_rectangles_and_names(frame, face_rectangles, face_names):
+def draw_face_rectangles_and_names(image, face_rectangles, face_names):
     for face_rectangle, name in zip(face_rectangles, face_names):
         left, top, right, bottom = face_rectangle.left(), face_rectangle.top(), face_rectangle.right(), face_rectangle.bottom()
         left *= 4
@@ -78,14 +81,14 @@ def draw_face_rectangles_and_names(frame, face_rectangles, face_names):
         else:
             rectangle_color = (255, 0, 0)
 
-        cv2.rectangle(frame, (left, top), (right, bottom), rectangle_color, 2)
+        cv2.rectangle(image, (left, top), (right, bottom), rectangle_color, 2)
 
         text_width, text_height = cv2.getTextSize(name, cv2.FONT_HERSHEY_DUPLEX, 0.5, 1)[0]
-        cv2.rectangle(frame, (left, top - text_height - 10), (left + text_width + 12, top), rectangle_color, -1)
+        cv2.rectangle(image, (left, top - text_height - 10), (left + text_width + 12, top), rectangle_color, -1)
 
-        cv2.putText(frame, name, (left + 6, top - 6), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
+        cv2.putText(image, name, (left + 6, top - 6), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
 
-    return frame
+    return image
 
 def initialize_face_pose_estimation():
     mp_drawing = mp.solutions.drawing_utils
@@ -94,8 +97,8 @@ def initialize_face_pose_estimation():
 
     return face_mesh, mp_drawing, mp_face_mesh
 
-def process_face_pose_estimation(face_mesh, frame):
-    results = face_mesh.process(frame)
+def process_face_pose_estimation(face_mesh, image):
+    results = face_mesh.process(image)
     return results
 
 def draw_face_pose_information(image, results, mp_drawing, mp_face_mesh):
@@ -129,47 +132,109 @@ def draw_face_pose_information(image, results, mp_drawing, mp_face_mesh):
 
     return image
 
+def mouse_event_callback(event, x, y, flags, data):
+    global auto_lock_toggle
+    global anti_turtle_toggle
+
+    # 마우스 이벤트 처리 코드 작성
+    if event == cv2.EVENT_LBUTTONDOWN:
+        if 370 <= x and x <= 400 and 175 <= y and y <= 205:
+            if auto_lock_toggle is False:
+                auto_lock_toggle = True
+            else:
+                auto_lock_toggle = False
+        if 370 <= x and x <= 400 and 225 <= y and y <= 255:
+            if anti_turtle_toggle is False:
+                anti_turtle_toggle = True
+            else:
+                anti_turtle_toggle = False
+
+def check_box(image, content, x, y):
+    global auto_lock_toggle
+    global anti_turtle_toggle
+
+    text_color = (0, 0, 0)
+    fill = 2
+    if content == "Auto Screen-Lock" and auto_lock_toggle is True:
+        fill = -1
+    if content == "Anti Turtle" and anti_turtle_toggle is True:
+        fill = -1
+
+    # anchor_point_x, anchor_point_y = 50, 200
+    function_name_size, check_box_size = 350, 30
+    cv2.putText(image, content, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, text_color, 2)
+    cv2.rectangle(
+        image,
+        (x + function_name_size - check_box_size, y - check_box_size // 2 - 10),
+        (x + function_name_size, y + check_box_size // 2 - 10),
+        text_color,
+        fill)
+    data = {
+        "x0": x + function_name_size - check_box_size,
+        "x1": x + function_name_size,
+        "y0": y + check_box_size // 2 - 10,
+        "y1": y - check_box_size // 2 - 10
+    }
+    cv2.setMouseCallback("42focus", mouse_event_callback, data)
+    return image
+
+def draw_gui(image):
+    cv2.rectangle(
+        image,
+        (30, 150),
+        (430, 380),
+        (255, 255, 255),
+        -1,
+        cv2.LINE_AA,
+        )
+
+    image = check_box(image, "Auto Screen-Lock", 50, 200)
+    image = check_box(image, "Anti Turtle", 50, 250)
+    
+    return image
+
 def main():
+    
     face_detector, shape_predictor, face_recognition_model, face_encodings = initialize_face_recognition()
     face_mesh, mp_drawing, mp_face_mesh = initialize_face_pose_estimation()
 
     video_capture = cv2.VideoCapture(0)
+    
 
     while True:
-        ret, frame = video_capture.read()
-
-        if not ret or frame is None:
-            print("Error: Unable to capture a frame from the webcam.")
+        success, image = video_capture.read()
+        if not success or image is None:
             break
 
-        frame_small = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
-        rgb_frame_small = cv2.cvtColor(frame_small, cv2.COLOR_BGR2RGB)
+        
+        image = draw_gui(image)
+        
 
-        face_rectangles, face_names = process_face_recognition(face_detector, shape_predictor, face_recognition_model, face_encodings, rgb_frame_small)
-        frame = draw_face_rectangles_and_names(frame, face_rectangles, face_names)
+        if not success or image is None:
+            print("Error: Unable to capture a image from the webcam.")
+            break
 
-        image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = process_face_pose_estimation(face_mesh, image)
-        image = draw_face_pose_information(image, results, mp_drawing, mp_face_mesh)
-        cv2.imshow('Combined Video Stream', image)
+        if auto_lock_toggle is True:
+            image_small = cv2.resize(image, (0, 0), fx=0.25, fy=0.25)
+            rgb_image_small = cv2.cvtColor(image_small, cv2.COLOR_BGR2RGB)
+            
+            face_rectangles, face_names = process_face_recognition(face_detector, shape_predictor, face_recognition_model, face_encodings, rgb_image_small)
+            image = draw_face_rectangles_and_names(image, face_rectangles, face_names)
 
+        if anti_turtle_toggle is True:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            results = process_face_pose_estimation(face_mesh, image)
+            image = draw_face_pose_information(image, results, mp_drawing, mp_face_mesh)
+            
+        cv2.imshow('42focus', image)
+        
         key = cv2.waitKey(1) & 0xFF
         if key == ord("q"):
             break
-        elif key == ord("g"):
-            if len(face_rectangles) == 1:
-                shape = shape_predictor(rgb_frame_small, face_rectangles[0])
-                face_encoding = face_recognition_model.compute_face_descriptor(rgb_frame_small, shape)
-                face_encoding = np.array(face_encoding)
-                name = input("Enter the person's name: ")
-                face_encodings[name] = face_encoding
-
-                with open(encodings_path, "wb") as f:
-                    pickle.dump(face_encodings, f)
+        
+        
 
     video_capture.release()
     cv2.destroyAllWindows()
 
-
-if __name__ == "__main__":
-    main()
+main()
