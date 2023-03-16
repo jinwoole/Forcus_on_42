@@ -32,9 +32,9 @@ STRICT_RATIO = 0.4;
 encodings_path = "face_encodings.pkl"
 
 #거북목 변수
-DISTANCE_THRESHOLD = 10  # in centimeters
-ROLL_THRESHOLD = 10       # in degrees
-VERTICAL_THRESHOLD = 30   # in pixels
+DISTANCE_THRESHOLD = 30  # in centimeters
+ROLL_THRESHOLD = 30       # in degrees
+VERTICAL_THRESHOLD = 200   # in pixels
 
 def delete_face_encodings():
     if os.path.exists(encodings_path):
@@ -217,16 +217,18 @@ def main():
             image, distance, roll, vertical_distance = draw_face_pose_information(image, results, mp_drawing, mp_face_mesh)
             #거북목 판별
             if not init_mode:
-                if abs(distance - init_distance) > DISTANCE_THRESHOLD:
-                    os.system(
-                        "osascript -e 'display notification \"Alert! 거북목 경고!\"'")
-                if abs(roll - init_roll) * 180 / math.pi > ROLL_THRESHOLD:
-                    os.system(
-                        "osascript -e 'display notification \"Alert! 거북목 경고!\"'")
-                if abs(vertical_distance - init_vertical) > VERTICAL_THRESHOLD:
-                    os.system(
-                        "osascript -e 'display notification \"Alert! 거북목 경고!\"'")
+                if not init_mode:
+                    if distance is not None and abs(distance - init_distance) > DISTANCE_THRESHOLD:
+                        os.system(
+                            "osascript -e 'display notification \"Alert! Distance changed.\" with title \"Face Pose Changed\"'")
 
+                    if roll is not None and abs(roll - init_roll) * 180 / math.pi > ROLL_THRESHOLD:
+                        os.system(
+                            "osascript -e 'display notification \"Alert! Roll changed.\" with title \"Face Pose Changed\"'")
+
+                    if vertical_distance is not None and abs(vertical_distance - init_vertical) > VERTICAL_THRESHOLD:
+                        os.system(
+                            "osascript -e 'display notification \"Alert! Vertical distance changed.\" with title \"Face Pose Changed\"'")
 
         else:
             image = frame
