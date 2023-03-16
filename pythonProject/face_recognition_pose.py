@@ -9,20 +9,20 @@ import mediapipe as mp
 import math
 import atexit #얼굴 정보 삭제를 위함
 import signal
-import time
-import pyautogui
+import time #time.sleep() -> 대기 및
+import pyautogui #화면잠금 하려고 한건데, 클러스터 맥에선 권한문제때문에 displaysleep이 한계일듯
 
-# Set the known distance between two facial landmarks in meters
+# pose 정보를 얻기 위한 단위 : 카메라와 유저 사이의 거리 변수
 KNOWN_DISTANCE = 0.5
 
-# Set the known size of the face in meters
+# pose 정보를 얻기 위한 단위 : 얼굴 너비
 KNOWN_FACE_WIDTH = 0.15
 
-# Set the focal length of the camera in pixels
+# 미니rt 해봤으면 알 것
 FOCAL_LENGTH = 640
 
 #안면인식모델 정확도
-REC_JITTER = 15;
+REC_JITTER = 10;
 
 #안면인식 판단 정확도 -> 낮을수록 엄격
 STRICT_RATIO = 0.4;
@@ -50,6 +50,9 @@ def initialize_face_recognition():
             face_encodings = pickle.load(f)
     else:
         face_encodings = {}
+        with open(encodings_path, "wb") as f:
+            pickle.dump(face_encodings, f)
+        print("face_encodings.pkl has been created.")
 
     return face_detector, shape_predictor, face_recognition_model, face_encodings
 
@@ -176,8 +179,8 @@ def main():
         if not init_mode:
             time.sleep(1)
             if init_user_not_detected_counter >= 5:
-                pyautogui.hotkey('ctrl', 'command', 'q') #락스크린 하지만, 클러스터 맥에선 안될 확률 높음
-                #os.system("pmset displaysleepnow") 이 친구는 될것이지만, 디스플레이만 꺼준다. 해봐야 알것같다.
+                #pyautogui.hotkey('ctrl', 'command', 'q') #락스크린 하지만, 클러스터 맥에선 안될 확률 높음
+                os.system("pmset displaysleepnow") #이 친구는 될것이지만, 디스플레이만 꺼준다. 해봐야 알것같다.
 
                 init_user_not_detected_counter = 0
         ret, frame = video_capture.read()
@@ -200,8 +203,9 @@ def main():
                                                                       face_names)
 
             if not init_mode:
-                if init_recognition_id in face_names:  #락스크린
-                    init_user_not_detected_counter = 0
+                if init_recognition_id in face_names:
+                    if face_names == "init_user": #락스크린
+                        init_user_not_detected_counter = 0
                 else:
                     init_user_not_detected_counter += 1
 
@@ -216,13 +220,6 @@ def main():
 
         key = cv2.waitKey(1) & 0xFF
         if key == ord("g") and init_mode:
-            if not os.path.exists(encodings_path):
-                with open(encodings_path, "wb") as f:
-                    pickle.dump(face_encodings, f)
-            else:
-                with open(encodings_path, "wb") as f:
-                    pickle.dump(face_encodings, f)
-
             if lock_flag and not turtle_flag:
                 if len(face_rectangles) == 1:
                     shape = shape_predictor(rgb_frame_small, face_rectangles[0])
@@ -263,7 +260,8 @@ def main():
                     init_mode = False
                     print(f"init_recognition_id: {init_recognition_id}, init_distance: {init_distance}, init_roll: {init_roll}, init_vert: {init_vertical}")
                 else:
-                    print("Error: Unable to store init_user, init_distance, and init_roll, make sure there's only one person in front of the camera")
+                    print("!Error: Unable to store init_user, init_distance, and init_roll, make sure there's only one person in front of the camera")
+                    #아무것도 감지되지 않는 상태에서 G눌렀을때 여기서 에러 띄워야 함 물론 저 위쪽도
             else:
                 print("Error: Invalid configuration. Please set at least one of lock_flag or turtle_flag to True.")
 
