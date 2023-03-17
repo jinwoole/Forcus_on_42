@@ -127,7 +127,6 @@ class FaceRecognizer:
     def __init__(self):
         self.delete_face_encodings()
         self.face_detector, self.shape_predictor, self.face_recognition_model, self.face_encodings = self.initialize_face_recognition()
-        self.face_mesh, self.mp_drawing, self.mp_face_mesh = self.initialize_face_pose_estimation()
         self.rgb_image_small = None
         self.face_rectangles = []
         self.face_names = []
@@ -154,13 +153,6 @@ class FaceRecognizer:
             print("face_encodings.pkl has been created.")
 
         return face_detector, shape_predictor, face_recognition_model, face_encodings
-
-    def initialize_face_pose_estimation(self):
-        mp_drawing = mp.solutions.drawing_utils
-        mp_face_mesh = mp.solutions.face_mesh
-        face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
-
-        return face_mesh, mp_drawing, mp_face_mesh
     
     def process_face_recognition(self):
         self.face_rectangles = self.face_detector(self.rgb_image_small, 1)
@@ -250,53 +242,69 @@ class FaceRecognizer:
         else:
             print("face_encodings.pkl not found.")
 
+class AntiTurtle:
+    def __init__(self):
+        self.face_mesh, self.mp_drawing, self.mp_face_mesh = self.initialize_face_pose_estimation()
+        self.distance = None
+        self.roll = None
+        self.vertical_distance = None
+
+    def initialize_face_pose_estimation(self):
+        mp_drawing = mp.solutions.drawing_utils
+        mp_face_mesh = mp.solutions.face_mesh
+        face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+
+        return face_mesh, mp_drawing, mp_face_mesh
+
+    def draw_mask(self, image):
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        results = self.process_face_pose_estimation(self.face_mesh, image)
+        image = self.draw_face_pose_information(image, results)
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        return image
+    
+    def process_face_pose_estimation(self, face_mesh, image):
+        return face_mesh.process(image)
+    
+    def draw_face_pose_information(self, image, results):  # Modify this line
+        self.distance = None
+        self.roll = None
+        if results.multi_face_landmarks:
+            for face_landmarks in results.multi_face_landmarks:
+                self.mp_drawing.draw_landmarks(image, face_landmarks, self.mp_face_mesh.FACEMESH_TESSELATION)
+
+                x = []
+                y = []
+                z = []
+                for landmark in face_landmarks.landmark:
+                    x.append(landmark.x)
+                    y.append(landmark.y)
+                    z.append(landmark.z)
+
+                nose_tip = (x[5], y[5], z[5])
+                left_eye = ((x[33] + x[133]) / 2, (y[33] + y[133]) / 2, (z[33] + z[133]) / 2)
+                right_eye = ((x[362] + x[263]) / 2, (y[362] + y[263]) / 2, (z[362] + z[263]) / 2)
+                self.vertical_distance = y[5] * image.shape[0]
+                self.distance = (KNOWN_FACE_WIDTH * FOCAL_LENGTH) / (2 * (right_eye[0] - left_eye[0]))
+                self.roll = math.atan2(right_eye[1] - left_eye[1], right_eye[0] - left_eye[0])
+
+                # cv2.putText(image, f"Distance: {self.distance:.2f} cm", (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                # cv2.putText(image, f"Roll: {self.roll * 180 / math.pi:.2f} degrees", (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                # cv2.putText(image, f"Vertical Distance: {self.vertical_distance:.2f} pixels", (50, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)  # Add this line
+        return image
+    
 class Focus:
     def __init__(self):
         self.step = 0
         self.mouse = Mouse()
         self.interface = Interface(20, 20)
         self.face_recognizer = FaceRecognizer()
+        self.anti_turtle = AntiTurtle()
         self.image = None
         self.video_capture = cv2.VideoCapture(0)
         self.init_distance = None
         self.init_roll = None
         self.init_vertical = None
-
-
-
-def process_face_pose_estimation(face_mesh, image):
-    results = face_mesh.process(image)
-    return results
-
-def draw_face_pose_information(image, results, mp_drawing, mp_face_mesh, vertical_distance=None):  # Modify this line
-    distance = None
-    roll = None
-
-    if results.multi_face_landmarks:
-        for face_landmarks in results.multi_face_landmarks:
-            mp_drawing.draw_landmarks(image, face_landmarks, mp_face_mesh.FACEMESH_TESSELATION)
-
-            x = []
-            y = []
-            z = []
-            for landmark in face_landmarks.landmark:
-                x.append(landmark.x)
-                y.append(landmark.y)
-                z.append(landmark.z)
-
-            nose_tip = (x[5], y[5], z[5])
-            left_eye = ((x[33] + x[133]) / 2, (y[33] + y[133]) / 2, (z[33] + z[133]) / 2)
-            right_eye = ((x[362] + x[263]) / 2, (y[362] + y[263]) / 2, (z[362] + z[263]) / 2)
-            vertical_distance = y[5] * image.shape[0]
-
-            distance = (KNOWN_FACE_WIDTH * FOCAL_LENGTH) / (2 * (right_eye[0] - left_eye[0]))
-            roll = math.atan2(right_eye[1] - left_eye[1], right_eye[0] - left_eye[0])
-
-            cv2.putText(image, f"Distance: {distance:.2f} cm", (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            cv2.putText(image, f"Roll: {roll * 180 / math.pi:.2f} degrees", (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            cv2.putText(image, f"Vertical Distance: {vertical_distance:.2f} pixels", (50, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)  # Add this line
-
-    return image, distance, roll, vertical_distance
 
 def mouse_event_callback(event, x, y, flags, focus):
     if focus.step == 0:
@@ -319,92 +327,23 @@ def main():
     focus = Focus()
 
     while True:
-        # print(focus.anti_turtle_toggle)
-        
         success, focus.image = focus.video_capture.read()
         if not success or focus.image is None:
             break
 
         cv2.setMouseCallback("42focus", mouse_event_callback, focus)
-        
-        focus.face_recognizer.draw_face_rect(focus.image, focus.mouse, focus.step)
+        if focus.step == 0:
+            focus.face_recognizer.draw_face_rect(focus.image, focus.mouse, focus.step)
         if focus.step == 1:
-            focus.interface.draw(focus.image)
-
-
-        # if focus.auto_lock_toggle is True:
-        #     if focus.user_not_detected_counter >= 5:
-        #         # os.system("pmset displaysleepnow")
-        #         focus.user_not_detected_counter = 0
-        #     image_small = cv2.resize(image, (0, 0), fx=0.25, fy=0.25)
-        #     rgb_image_small = cv2.cvtColor(image_small, cv2.COLOR_BGR2RGB)
+            # focus.interface.draw(focus.image)
+            focus.image = focus.anti_turtle.draw_mask(focus.image)
             
-        #     face_rectangles, face_names = process_face_recognition(face_detector, shape_predictor, face_recognition_model, face_encodings, rgb_image_small)
-        #     image = draw_face_rectangles_and_names(image, face_rectangles, face_names)
 
-        #     if face_names == "init_user":
-        #         focus.user_not_detected_counter = 0
-        #     else:
-        #         focus.user_not_detected_counter += 1
-
-        # if focus.anti_turtle_toggle is True:
-        #     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        #     results = process_face_pose_estimation(face_mesh, image)
-        #     image, distance, roll, vertical_distance = draw_face_pose_information(image, results, mp_drawing, mp_face_mesh)
-            
         cv2.imshow('42focus', focus.image)
         
         key = cv2.waitKey(1) & 0xFF
         if key == ord("q"):
             break
-
-        # if key == ord("g") and init_mode:
-        #     if focus.auto_lock_toggle and not focus.anti_turtle_toggle:
-        #         if len(face_rectangles) == 1:
-        #             shape = shape_predictor(rgb_image_small, face_rectangles[0])
-        #             face_encoding = face_recognition_model.compute_face_descriptor(rgb_image_small, shape)
-        #             face_encoding = np.array(face_encoding)
-        #             name = "init_user"
-        #             face_encodings[name] = face_encoding
-
-        #             init_recognition_id = name
-
-        #             print(f"init_recognition_id: {init_recognition_id}")
-        #             init_mode = False
-        #         else:
-        #             print("Error: Unable to store init_user, make sure there's only one person in front of the camera")
-        #     elif not focus.auto_lock_toggle and focus.anti_turtle_toggle:
-        #         if results.multi_face_landmarks and len(results.multi_face_landmarks) == 1:
-        #             init_distance = distance
-        #             init_roll = roll
-        #             init_vertical = vertical_distance
-
-        #             init_mode = False
-        #             print(f"init_distance: {init_distance}, init_roll: {init_roll}, init_vert: {init_vertical}")
-        #         else:
-        #             print("Error: Unable to store init_distance and init_roll, make sure there's only one person in front of the camera")
-        #     elif focus.auto_lock_toggle and focus.anti_turtle_toggle:
-        #         if len(face_rectangles) == 1 and results.multi_face_landmarks and len(results.multi_face_landmarks) == 1:
-        #             shape = shape_predictor(rgb_image_small, face_rectangles[0])
-        #             face_encoding = face_recognition_model.compute_face_descriptor(rgb_image_small, shape)
-        #             face_encoding = np.array(face_encoding)
-        #             name = "init_user"
-        #             face_encodings[name] = face_encoding
-
-        #             init_distance = distance
-        #             init_roll = roll
-        #             init_vertical = vertical_distance
-        #             init_recognition_id = name
-
-        #             init_mode = False
-        #             print(f"init_recognition_id: {init_recognition_id}, init_distance: {init_distance}, init_roll: {init_roll}, init_vert: {init_vertical}")
-        #         else:
-        #             print("!Error: Unable to store init_user, init_distance, and init_roll, make sure there's only one person in front of the camera")
-        #             #아무것도 감지되지 않는 상태에서 G눌렀을때 여기서 에러 띄워야 함 물론 저 위쪽도
-        #     else:
-        #         print("Error: Invalid configuration. Please set at least one of lock_flag or turtle_flag to True.")
-        
-        
 
     focus.video_capture.release()
     cv2.destroyAllWindows()
