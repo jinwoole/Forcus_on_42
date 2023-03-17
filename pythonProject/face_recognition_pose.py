@@ -9,9 +9,8 @@ import mediapipe as mp
 import math
 import atexit #얼굴 정보 삭제를 위함
 import signal
-import time #time.sleep() -> 대기 및
-import pyautogui #화면잠금 하려고 한건데, 클러스터 맥에선 권한문제때문에 displaysleep이 한계일듯
-import subprocess
+import time #time.sleep() ->
+import subprocess   # 커밋
 
 # pose 정보를 얻기 위한 단위 : 카메라와 유저 사이의 거리 변수
 KNOWN_DISTANCE = 0.5
@@ -29,12 +28,19 @@ REC_JITTER = 10;
 STRICT_RATIO = 0.4;
 
 #안면인식 데이터 저장되는 곳
-encodings_path = "face_encodings.pkl"
+current_dir = current_executable_path = os.path.dirname(os.path.abspath(__file__))
+encodings_path = os.path.join(current_dir, "face_encodings.pkl")
 
 #거북목 변수
-DISTANCE_THRESHOLD = 30  # in centimeters
+DISTANCE_THRESHOLD = 40  # in centimeters
 ROLL_THRESHOLD = 30       # in degrees
 VERTICAL_THRESHOLD = 200   # in pixels
+
+#커밋
+def display_alert(message, delay=1):
+    applescript = f'display dialog "{message}" with title "Alert" buttons {{"OK"}} default button "OK" giving up after {delay}'
+    subprocess.Popen(['osascript', '-e', applescript])
+
 
 def delete_face_encodings():
     if os.path.exists(encodings_path):
@@ -45,8 +51,8 @@ def delete_face_encodings():
 
 def initialize_face_recognition():
     face_detector = dlib.get_frontal_face_detector()
-    shape_predictor_path = "shape_predictor_68_face_landmarks.dat"
-    face_recognition_model_path = "dlib_face_recognition_resnet_model_v1.dat"
+    shape_predictor_path = 'shape_predictor_68_face_landmarks.dat'
+    face_recognition_model_path = 'dlib_face_recognition_resnet_model_v1.dat'
 
     shape_predictor = dlib.shape_predictor(shape_predictor_path)
     face_recognition_model = dlib.face_recognition_model_v1(face_recognition_model_path)
@@ -80,7 +86,7 @@ def process_face_recognition(face_detector, shape_predictor, face_recognition_mo
                 min_distance = face_distances[min_distance_index]
 
                 if min_distance < STRICT_RATIO:
-                    name = list(face_encodings.keys())[min_distance_index]
+                    name = list(face_encodings.key밋s())[min_distance_index]
                 else:
                     name = "Unknown Person"
             else:
@@ -217,18 +223,26 @@ def main():
             image, distance, roll, vertical_distance = draw_face_pose_information(image, results, mp_drawing, mp_face_mesh)
             #거북목 판별
             if not init_mode:
-                if not init_mode:
-                    if distance is not None and abs(distance - init_distance) > DISTANCE_THRESHOLD:
-                        os.system(
-                            "osascript -e 'display notification \"Alert! Distance changed.\" with title \"Face Pose Changed\"'")
+                if distance is not None:
+                    distance_diff = abs(distance - init_distance)
+                    cv2.putText(image, f"Distance diff: {distance_diff:.2f} cm", (20, 40), cv2.FONT_HERSHEY_SIMPLEX,
+                                1.1, (255, 0, 0), 2)
+                    if distance_diff > DISTANCE_THRESHOLD:
+                        display_alert("This is a test alert.")
 
-                    if roll is not None and abs(roll - init_roll) * 180 / math.pi > ROLL_THRESHOLD:
-                        os.system(
-                            "osascript -e 'display notification \"Alert! Roll changed.\" with title \"Face Pose Changed\"'")
+                if roll is not None:
+                    roll_diff = abs(roll - init_roll) * 180 / math.pi
+                    cv2.putText(image, f"Roll diff: {roll_diff:.2f} degrees", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.1,
+                                (255, 0, 0), 2)
+                    if roll_diff > ROLL_THRESHOLD:
+                        display_alert("This is a test alert.")
 
-                    if vertical_distance is not None and abs(vertical_distance - init_vertical) > VERTICAL_THRESHOLD:
-                        os.system(
-                            "osascript -e 'display notification \"Alert! Vertical distance changed.\" with title \"Face Pose Changed\"'")
+                if vertical_distance is not None:
+                    vertical_diff = abs(vertical_distance - init_vertical)
+                    cv2.putText(image, f"Vertical diff: {vertical_diff:.2f} pixels", (20, 120),
+                                cv2.FONT_HERSHEY_SIMPLEX, 1.1, (255, 0, 0), 2)
+                    if vertical_diff > VERTICAL_THRESHOLD:
+                        display_alert("This is a test alert.")
 
         else:
             image = frame
