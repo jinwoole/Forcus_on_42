@@ -1,17 +1,6 @@
 import cv2
-import dlib
-
-import numpy as np
-import pickle
-import os
-import sys
-import mediapipe as mp
-import math
-import atexit # 얼굴 정보 삭제를 위함
-import signal
-import time
-import subprocess
 from focus import Focus
+import time
 
 def mouse_event_callback(event, x, y, flags, focus):
     if focus.step == 0:
@@ -45,7 +34,8 @@ def main():
             focus.interface.draw(focus.image)
             focus.face_recognizer.draw_face_rect(focus.image, focus.mouse, focus.step)
             if focus.interface.anti_turtle_check_box.clicked:
-                focus.image = focus.anti_turtle.draw_mask(focus.image)
+                focus.image = focus.anti_turtle.draw_mask(focus.image, focus.face_recognizer)
+            # time.sleep(1)
 
         cv2.imshow('42focus', focus.image)
         

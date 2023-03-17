@@ -1,4 +1,5 @@
 import mediapipe as mp
+import numpy as np
 import cv2
 import math
 from constants import Constants
@@ -17,19 +18,27 @@ class AntiTurtle:
 
         return face_mesh, mp_drawing, mp_face_mesh
 
-    def draw_mask(self, image):
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        results = self.process_face_pose_estimation(self.face_mesh, image)
+    def draw_mask(self, image, face_recognizer):
+        # 제외할 부분의 좌표 (x1, y1, x2, y2)
+        exclude_area = face_recognizer.user_face_rect_pos
+        # 제외할 부분을 제외한 모든 픽셀을 검은색으로 칠한 이미지 생성
+        mask = np.zeros_like(image)
+        mask[exclude_area[1]:exclude_area[3], exclude_area[0]:exclude_area[2], :] = 255
+        # 이미지에서 제외할 부분을 제외한 부분을 검은색으로 칠함
+        edited_image = cv2.bitwise_and(image, mask)
+
+        edited_image = cv2.cvtColor(edited_image, cv2.COLOR_BGR2RGB)
+        results = self.process_face_pose_estimation(self.face_mesh, edited_image)
         image = self.draw_face_pose_information(image, results)
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        
         return image
     
     def process_face_pose_estimation(self, face_mesh, image):
         return face_mesh.process(image)
     
-    def draw_face_pose_information(self, image, results):  # Modify this line
-        self.distance = None
-        self.roll = None
+    def draw_face_pose_information(self, image, results):
+        # self.distance = None
+        # self.roll = None
         if results.multi_face_landmarks:
             for face_landmarks in results.multi_face_landmarks:
                 self.mp_drawing.draw_landmarks(image, face_landmarks, self.mp_face_mesh.FACEMESH_TESSELATION)
