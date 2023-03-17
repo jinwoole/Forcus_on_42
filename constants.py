@@ -10,3 +10,5 @@ class Constants:
 	DISTANCE_THRESHOLD = 30  # in centimeters
 	ROLL_THRESHOLD = 30       # in degrees
 	VERTICAL_THRESHOLD = 200   # in pixels
+
+	USER_NOT_DETECTED_COUNT_MAX = 100

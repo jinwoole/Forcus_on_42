@@ -16,3 +16,4 @@ class Focus:
         self.init_distance = None
         self.init_roll = None
         self.init_vertical = None
+        self.exit_on = False

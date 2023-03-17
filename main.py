@@ -14,11 +14,31 @@ def mouse_event_callback(event, x, y, flags, focus):
     elif focus.step == 1:
         if event == cv2.EVENT_MOUSEMOVE:
             focus.interface.start_button.hover_event(x, y)
+            focus.interface.exit_button.hover_event(x, y)
 
-        if event == cv2.EVENT_LBUTTONDOWN:
+        if event == cv2.EVENT_LBUTTONDOWN:    
             focus.interface.auto_lock_check_box.click_event(x, y)
             focus.interface.anti_turtle_check_box.click_event(x, y)
-
+            if focus.interface.exit_button.click_event(x, y):
+                print("Exit!")
+                focus.exit_on = True
+            if focus.interface.start_button.click_event(x, y):
+                focus.step = 2
+                focus.anti_turtle.set_init_data()
+                focus.interface.auto_lock_check_box.set_disable(True)
+                focus.interface.anti_turtle_check_box.set_disable(True)
+                focus.interface.start_button.set_disable(True)
+    
+    elif focus.step == 2:
+        if event == cv2.EVENT_MOUSEMOVE:
+            focus.interface.exit_button.hover_event(x, y)
+        if event == cv2.EVENT_LBUTTONDOWN:
+            if focus.interface.exit_button.click_event(x, y):
+                print("Exit!")
+                focus.exit_on = True
+            focus.interface.auto_lock_check_box.click_event(x, y)
+            focus.interface.anti_turtle_check_box.click_event(x, y)
+        
 def main():
     focus = Focus()
 
@@ -28,19 +48,29 @@ def main():
             break
 
         cv2.setMouseCallback("42focus", mouse_event_callback, focus)
-        if focus.step == 0:
-            focus.face_recognizer.draw_face_rect(focus.image, focus.mouse, focus.step)
+
+        
+        focus.face_recognizer.draw_face_rect(focus.image, focus.mouse, focus.step)
+            
         if focus.step == 1:
             focus.interface.draw(focus.image)
-            focus.face_recognizer.draw_face_rect(focus.image, focus.mouse, focus.step)
+            # focus.face_recognizer.draw_face_rect(focus.image, focus.mouse, focus.step)
             if focus.interface.anti_turtle_check_box.clicked:
                 focus.image = focus.anti_turtle.draw_mask(focus.image, focus.face_recognizer)
-            # time.sleep(1)
-
+            
+        elif focus.step == 2:
+            # focus.face_recognizer.draw_face_rect(focus.image, focus.mouse, focus.step)
+            focus.interface.draw(focus.image)
+            if focus.interface.anti_turtle_check_box.clicked is True:
+                focus.image = focus.anti_turtle.draw_mask(focus.image, focus.face_recognizer)
+                focus.anti_turtle.check_pose()
+            if focus.interface.auto_lock_check_box.clicked is True:
+                focus.face_recognizer.check_is_user_face()
+        
         cv2.imshow('42focus', focus.image)
         
         key = cv2.waitKey(1) & 0xFF
-        if key == ord("q"):
+        if key == ord("q") or focus.exit_on is True:
             break
 
     focus.video_capture.release()

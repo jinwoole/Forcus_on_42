@@ -54,8 +54,10 @@ class FaceRecognizer:
                         name = list(self.face_encodings.keys())[min_distance_index]
             self.face_names.append(name)
     
-    def draw_face_rectangles_and_names(self, image):
+    def draw_face_rectangles_and_names(self, image, step):
         self.user_face_rect_pos = (0, 0, 0, 0)
+        if step == 2:
+            self.user_not_detected_counter += 1
         for face_rectangle, name in zip(self.face_rectangles, self.face_names):
             left, top, right, bottom = face_rectangle.left() * 4, face_rectangle.top() * 4, face_rectangle.right() * 4, face_rectangle.bottom() * 4
             if name == "You":
@@ -65,6 +67,7 @@ class FaceRecognizer:
                 cv2.putText(image, name, (left + 6, top - 6), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
                 cv2.rectangle(image, (left, top), (right, bottom), rectangle_color, 2)
                 self.user_face_rect_pos = (left, top, right, bottom)
+                self.user_not_detected_counter = 0
             else:
                 rectangle_color = (0, 255, 255)
                 cv2.rectangle(image, (left, top), (right, bottom), rectangle_color, 2)
@@ -85,7 +88,10 @@ class FaceRecognizer:
                 cv2.rectangle(image, (left, top), (right, bottom), rectangle_color, thickness)
         elif step == 1:
             self.process_face_recognition()
-            self.draw_face_rectangles_and_names(image)
+            self.draw_face_rectangles_and_names(image, step)
+        elif step == 2:
+            self.process_face_recognition()
+            self.draw_face_rectangles_and_names(image, step)
 
     def rect_click_event(self, mouse_x, mouse_y):
         for face_rectangle in self.face_rectangles:
@@ -108,3 +114,8 @@ class FaceRecognizer:
             os.remove(Constants.FACE_SAVE_PATH)
         else:
             print("face_encodings.pkl not found.")
+
+    def check_is_user_face(self):
+        if self.user_not_detected_counter >= Constants.USER_NOT_DETECTED_COUNT_MAX:
+            os.system("pmset displaysleepnow")
+            self.user_not_detected_counter = 0
