@@ -123,14 +123,16 @@ class Interface:
         self.anti_turtle_check_box.draw(image)
         self.start_button.draw(image)
 
-class FaceDetector:
+class FaceRecognizer:
     def __init__(self):
+        self.delete_face_encodings()
         self.face_detector, self.shape_predictor, self.face_recognition_model, self.face_encodings = self.initialize_face_recognition()
         self.face_mesh, self.mp_drawing, self.mp_face_mesh = self.initialize_face_pose_estimation()
         self.rgb_image_small = None
         self.face_rectangles = []
         self.face_names = []
         self.user_not_detected_counter = 0
+        
 
     def initialize_face_recognition(self):
         face_detector = dlib.get_frontal_face_detector()
@@ -177,13 +179,13 @@ class FaceDetector:
                     if min_distance < 0.4:
                         name = list(self.face_encodings.keys())[min_distance_index]
                     else:
-                        name = "Unknown Person"
+                        name = "Unknown"
                 else:
-                    name = "Unknown Person"
+                    name = "Unknown"
             else:
-                name = "Unknown Person"
+                name = "Unknown"
 
-            self.face_names.append("Unknown Person")
+            self.face_names.append(name)
     
     def draw_face_rectangles_and_names(self, image):
         for face_rectangle, name in zip(self.face_rectangles, self.face_names):
@@ -193,31 +195,36 @@ class FaceDetector:
             top *= 4
             bottom *= 4
             if name == "Unknown":
-                rectangle_color = (0, 0, 255)
+                rectangle_color = (0, 255, 255)
             else:
-                rectangle_color = (255, 0, 0)
-            rectangle_color = (0, 0, 255)
+                rectangle_color = (0, 255, 0)
+                text_width, text_height = cv2.getTextSize(name, cv2.FONT_HERSHEY_DUPLEX, 0.5, 1)[0]
+                cv2.rectangle(image, (left, top - text_height - 10), (left + text_width + 12, top), rectangle_color, -1)
+                cv2.putText(image, name, (left + 6, top - 6), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
+            
             cv2.rectangle(image, (left, top), (right, bottom), rectangle_color, 2)
-            text_width, text_height = cv2.getTextSize(name, cv2.FONT_HERSHEY_DUPLEX, 0.5, 1)[0]
-            cv2.rectangle(image, (left, top - text_height - 10), (left + text_width + 12, top), rectangle_color, -1)
-            cv2.putText(image, name, (left + 6, top - 6), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
 
-    def draw_face_rect(self, image, mouse):
+    def draw_face_rect(self, image, mouse, step):
         image_small = cv2.resize(image, (0, 0), fx=0.25, fy=0.25)
         self.rgb_image_small = cv2.cvtColor(image_small, cv2.COLOR_BGR2RGB)
-        self.face_rectangles = self.face_detector(self.rgb_image_small, 1)
-        for idx, face_rectangle in enumerate(self.face_rectangles):
-            left, top, right, bottom = face_rectangle.left(), face_rectangle.top(), face_rectangle.right(), face_rectangle.bottom()
-            left *= 4
-            right *= 4
-            top *= 4
-            bottom *= 4
-            rectangle_color = (0, 255, 255)
-            thickness = 2
-            if left <= mouse.x <= right and top <= mouse.y <= bottom:
-                rectangle_color = (0, 255, 0)
-                thickness = 3
-            cv2.rectangle(image, (left, top), (right, bottom), rectangle_color, thickness)
+
+        if step == 0:
+            self.face_rectangles = self.face_detector(self.rgb_image_small, 1)
+            for idx, face_rectangle in enumerate(self.face_rectangles):
+                left, top, right, bottom = face_rectangle.left(), face_rectangle.top(), face_rectangle.right(), face_rectangle.bottom()
+                left *= 4
+                right *= 4
+                top *= 4
+                bottom *= 4
+                rectangle_color = (0, 255, 255)
+                thickness = 2
+                if left <= mouse.x <= right and top <= mouse.y <= bottom:
+                    rectangle_color = (0, 255, 0)
+                    thickness = 3
+                cv2.rectangle(image, (left, top), (right, bottom), rectangle_color, thickness)
+        elif step == 1:
+            self.process_face_recognition()
+            self.draw_face_rectangles_and_names(image)
 
     def rect_click_event(self, mouse_x, mouse_y):
         for face_rectangle in self.face_rectangles:
@@ -227,6 +234,12 @@ class FaceDetector:
             top *= 4
             bottom *= 4
             if left <= mouse_x <= right and top <= mouse_y <= bottom:
+                shape = self.shape_predictor(self.rgb_image_small, face_rectangle)
+                face_encoding = self.face_recognition_model.compute_face_descriptor(self.rgb_image_small, shape)
+                face_encoding = np.array(face_encoding)
+                name = "You"
+                self.face_encodings[name] = face_encoding
+                print("detecting you...")                
                 return True
         return False
             
@@ -242,7 +255,7 @@ class Focus:
         self.step = 0
         self.mouse = Mouse()
         self.interface = Interface(20, 20)
-        self.face_detector = FaceDetector()
+        self.face_recognizer = FaceRecognizer()
         self.image = None
         self.video_capture = cv2.VideoCapture(0)
         self.init_distance = None
@@ -251,39 +264,39 @@ class Focus:
 
 
 
-# def process_face_pose_estimation(face_mesh, image):
-#     results = face_mesh.process(image)
-#     return results
+def process_face_pose_estimation(face_mesh, image):
+    results = face_mesh.process(image)
+    return results
 
-# def draw_face_pose_information(image, results, mp_drawing, mp_face_mesh, vertical_distance=None):  # Modify this line
-#     distance = None
-#     roll = None
+def draw_face_pose_information(image, results, mp_drawing, mp_face_mesh, vertical_distance=None):  # Modify this line
+    distance = None
+    roll = None
 
-#     if results.multi_face_landmarks:
-#         for face_landmarks in results.multi_face_landmarks:
-#             mp_drawing.draw_landmarks(image, face_landmarks, mp_face_mesh.FACEMESH_TESSELATION)
+    if results.multi_face_landmarks:
+        for face_landmarks in results.multi_face_landmarks:
+            mp_drawing.draw_landmarks(image, face_landmarks, mp_face_mesh.FACEMESH_TESSELATION)
 
-#             x = []
-#             y = []
-#             z = []
-#             for landmark in face_landmarks.landmark:
-#                 x.append(landmark.x)
-#                 y.append(landmark.y)
-#                 z.append(landmark.z)
+            x = []
+            y = []
+            z = []
+            for landmark in face_landmarks.landmark:
+                x.append(landmark.x)
+                y.append(landmark.y)
+                z.append(landmark.z)
 
-#             nose_tip = (x[5], y[5], z[5])
-#             left_eye = ((x[33] + x[133]) / 2, (y[33] + y[133]) / 2, (z[33] + z[133]) / 2)
-#             right_eye = ((x[362] + x[263]) / 2, (y[362] + y[263]) / 2, (z[362] + z[263]) / 2)
-#             vertical_distance = y[5] * image.shape[0]
+            nose_tip = (x[5], y[5], z[5])
+            left_eye = ((x[33] + x[133]) / 2, (y[33] + y[133]) / 2, (z[33] + z[133]) / 2)
+            right_eye = ((x[362] + x[263]) / 2, (y[362] + y[263]) / 2, (z[362] + z[263]) / 2)
+            vertical_distance = y[5] * image.shape[0]
 
-#             distance = (KNOWN_FACE_WIDTH * FOCAL_LENGTH) / (2 * (right_eye[0] - left_eye[0]))
-#             roll = math.atan2(right_eye[1] - left_eye[1], right_eye[0] - left_eye[0])
+            distance = (KNOWN_FACE_WIDTH * FOCAL_LENGTH) / (2 * (right_eye[0] - left_eye[0]))
+            roll = math.atan2(right_eye[1] - left_eye[1], right_eye[0] - left_eye[0])
 
-#             cv2.putText(image, f"Distance: {distance:.2f} cm", (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-#             cv2.putText(image, f"Roll: {roll * 180 / math.pi:.2f} degrees", (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-#             cv2.putText(image, f"Vertical Distance: {vertical_distance:.2f} pixels", (50, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)  # Add this line
+            cv2.putText(image, f"Distance: {distance:.2f} cm", (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(image, f"Roll: {roll * 180 / math.pi:.2f} degrees", (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(image, f"Vertical Distance: {vertical_distance:.2f} pixels", (50, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)  # Add this line
 
-#     return image, distance, roll, vertical_distance
+    return image, distance, roll, vertical_distance
 
 def mouse_event_callback(event, x, y, flags, focus):
     if focus.step == 0:
@@ -291,7 +304,7 @@ def mouse_event_callback(event, x, y, flags, focus):
             focus.mouse.x = x
             focus.mouse.y = y
         if event == cv2.EVENT_LBUTTONDOWN:
-            if focus.face_detector.rect_click_event(x, y) is True:
+            if focus.face_recognizer.rect_click_event(x, y) is True:
                 focus.step = 1
 
     elif focus.step == 1:
@@ -313,10 +326,11 @@ def main():
             break
 
         cv2.setMouseCallback("42focus", mouse_event_callback, focus)
-        if focus.step == 0:
-            focus.face_detector.draw_face_rect(focus.image, focus.mouse)
-        elif focus.step == 1:
+        
+        focus.face_recognizer.draw_face_rect(focus.image, focus.mouse, focus.step)
+        if focus.step == 1:
             focus.interface.draw(focus.image)
+
 
         # if focus.auto_lock_toggle is True:
         #     if focus.user_not_detected_counter >= 5:
