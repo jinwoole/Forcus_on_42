@@ -7,7 +7,7 @@ from filelock import FileLock, Timeout
 import threading
 
 lock_file = 'tray.lock'
-icon_path = "icon.png"
+icon_path = "data/icon.png"
 encodings_file = "face_encodings.pkl"
 
 process = None

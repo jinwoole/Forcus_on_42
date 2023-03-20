@@ -113,7 +113,7 @@ class FaceRecognizer:
         if os.path.exists(Constants.FACE_SAVE_PATH):
             os.remove(Constants.FACE_SAVE_PATH)
         else:
-            print("f{Constants.FACE_SAVE_PATH} not found.")
+            print(f"{Constants.FACE_SAVE_PATH} not found.")
 
     def check_is_user_face(self):
         if self.user_not_detected_counter >= Constants.USER_NOT_DETECTED_COUNT_MAX:

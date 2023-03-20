@@ -8,8 +8,8 @@ class Constants:
 	STRICT_RATIO = 0.4 # 안면인식 판단 정확도 -> 낮을수록 엄격
 	FACE_SAVE_PATH = "face_encodings.pkl" # 안면인식 데이터 저장되는 곳
 
-	SHAPE_PREDICTOR_PATH = "shape_predictor_68_face_landmarks.dat"
-	FACE_RECOGNITION_MODEL_PATH = "dlib_face_recognition_resnet_model_v1.dat"
+	SHAPE_PREDICTOR_PATH = "./data/shape_predictor_68_face_landmarks.dat"
+	FACE_RECOGNITION_MODEL_PATH = "./data/dlib_face_recognition_resnet_model_v1.dat"
 	
 	# 거북목 판정 세팅
 	DISTANCE_THRESHOLD = 70  # in centimeters
