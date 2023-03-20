@@ -70,7 +70,7 @@ def main():
         cv2.imshow('42focus', focus.image)
         
         key = cv2.waitKey(1) & 0xFF
-        if key == ord("q") or focus.exit_on is True:
+        if key == ord("q") or key == 27 or focus.exit_on is True:
             break
 
     focus.video_capture.release()

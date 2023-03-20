@@ -7,8 +7,8 @@ class Constants:
 	FACE_SAVE_PATH = "face_encodings.pkl" # 안면인식 데이터 저장되는 곳
 	
 	# 거북목 
-	DISTANCE_THRESHOLD = 50  # in centimeters
+	DISTANCE_THRESHOLD = 70  # in centimeters
 	ROLL_THRESHOLD = 30       # in degrees
 	VERTICAL_THRESHOLD = 200   # in pixels
 
-	USER_NOT_DETECTED_COUNT_MAX = 100
+	USER_NOT_DETECTED_COUNT_MAX = 50
