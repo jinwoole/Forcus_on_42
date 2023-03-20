@@ -18,8 +18,8 @@ class FaceRecognizer:
         
     def initialize_face_recognition(self):
         face_detector = dlib.get_frontal_face_detector()
-        shape_predictor_path = "shape_predictor_68_face_landmarks.dat"
-        face_recognition_model_path = "dlib_face_recognition_resnet_model_v1.dat"
+        shape_predictor_path = Constants.SHAPE_PREDICTOR_PATH
+        face_recognition_model_path = Constants.FACE_RECOGNITION_MODEL_PATH
 
         shape_predictor = dlib.shape_predictor(shape_predictor_path)
         face_recognition_model = dlib.face_recognition_model_v1(face_recognition_model_path)
@@ -33,7 +33,7 @@ class FaceRecognizer:
             face_encodings = {}
             with open(encodings_path, "wb") as f:
                 pickle.dump(face_encodings, f)
-            print("face_encodings.pkl has been created.")
+            print(f"{Constants.FACE_SAVE_PATH} has been created.")
 
         return face_detector, shape_predictor, face_recognition_model, face_encodings
     
@@ -113,7 +113,7 @@ class FaceRecognizer:
         if os.path.exists(Constants.FACE_SAVE_PATH):
             os.remove(Constants.FACE_SAVE_PATH)
         else:
-            print("face_encodings.pkl not found.")
+            print("f{Constants.FACE_SAVE_PATH} not found.")
 
     def check_is_user_face(self):
         if self.user_not_detected_counter >= Constants.USER_NOT_DETECTED_COUNT_MAX:

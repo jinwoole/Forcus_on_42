@@ -23,11 +23,16 @@ class AntiTurtle:
         return face_mesh, mp_drawing, mp_face_mesh
     
     def check_pose(self):
+        distance_diff = 0
+        roll_diff = 0
+        vertical_diff = 0
+
         if self.distance is not None:
-            distance_diff = abs(self.distance - self.init_distance)
+            distance_diff = (self.distance - self.init_distance)
             # cv2.putText(image, f"Distance diff: {distance_diff:.2f} cm", (20, 40), cv2.FONT_HERSHEY_SIMPLEX,
             #             1.1, (255, 0, 0), 2)
-            if distance_diff > Constants.DISTANCE_THRESHOLD:
+            print(f"Distance diff: {distance_diff:.2f} cm")
+            if -1 * distance_diff > Constants.DISTANCE_THRESHOLD:
                 self.display_alert()
 
         if self.roll is not None:
