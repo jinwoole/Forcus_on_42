@@ -86,7 +86,7 @@ def process_face_recognition(face_detector, shape_predictor, face_recognition_mo
                 min_distance = face_distances[min_distance_index]
 
                 if min_distance < STRICT_RATIO:
-                    name = list(face_encodings.key밋s())[min_distance_index]
+                    name = list(face_encodings.keys())[min_distance_index]
                 else:
                     name = "Unknown Person"
             else:
@@ -156,11 +156,20 @@ def draw_face_pose_information(image, results, mp_drawing, mp_face_mesh, vertica
             distance = (KNOWN_FACE_WIDTH * FOCAL_LENGTH) / (2 * (right_eye[0] - left_eye[0]))
             roll = math.atan2(right_eye[1] - left_eye[1], right_eye[0] - left_eye[0])
 
-            cv2.putText(image, f"Distance: {distance:.2f} cm", (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            cv2.putText(image, f"Roll: {roll * 180 / math.pi:.2f} degrees", (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            cv2.putText(image, f"Vertical Distance: {vertical_distance:.2f} pixels", (50, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)  # Add this line
-
     return image, distance, roll, vertical_distance
+
+def face_rectangle_area(face_rectangle):
+    width = face_rectangle.right() - face_rectangle.left()
+    height = face_rectangle.bottom() - face_rectangle.top()
+    return width * height
+
+def is_face_in_middle(face_rectangle, frame_width):
+    left = face_rectangle.left()
+    right = face_rectangle.right()
+    middle = frame_width // 2
+
+    return left <= middle <= right
+
 
 def main():
     if len(sys.argv) != 3:
@@ -185,6 +194,9 @@ def main():
     init_mode = True
 
     init_user_not_detected_counter = 0  #락스크린
+
+    display_window = True
+
     while True:
         if not init_mode:
             time.sleep(1)
@@ -225,77 +237,84 @@ def main():
             if not init_mode:
                 if distance is not None:
                     distance_diff = abs(distance - init_distance)
-                    cv2.putText(image, f"Distance diff: {distance_diff:.2f} cm", (20, 40), cv2.FONT_HERSHEY_SIMPLEX,
-                                1.1, (255, 0, 0), 2)
                     if distance_diff > DISTANCE_THRESHOLD:
                         display_alert("This is a test alert.")
 
                 if roll is not None:
                     roll_diff = abs(roll - init_roll) * 180 / math.pi
-                    cv2.putText(image, f"Roll diff: {roll_diff:.2f} degrees", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.1,
-                                (255, 0, 0), 2)
                     if roll_diff > ROLL_THRESHOLD:
                         display_alert("This is a test alert.")
 
                 if vertical_distance is not None:
                     vertical_diff = abs(vertical_distance - init_vertical)
-                    cv2.putText(image, f"Vertical diff: {vertical_diff:.2f} pixels", (20, 120),
-                                cv2.FONT_HERSHEY_SIMPLEX, 1.1, (255, 0, 0), 2)
                     if vertical_diff > VERTICAL_THRESHOLD:
                         display_alert("This is a test alert.")
 
         else:
             image = frame
 
-        cv2.imshow('Combined Video Stream', image)
+        if display_window:
+            cv2.imshow('Combined Video Stream', image)
 
         key = cv2.waitKey(1) & 0xFF
+
         if key == ord("g") and init_mode:
-            if lock_flag and not turtle_flag:
-                if len(face_rectangles) == 1:
-                    shape = shape_predictor(rgb_frame_small, face_rectangles[0])
-                    face_encoding = face_recognition_model.compute_face_descriptor(rgb_frame_small, shape)
-                    face_encoding = np.array(face_encoding)
-                    name = "init_user"
-                    face_encodings[name] = face_encoding
+            largest_face_rectangle = None
+            largest_face_area = 0
 
-                    init_recognition_id = name
+            for face_rectangle in face_rectangles:
+                area = face_rectangle_area(face_rectangle)
+                if area > largest_face_area and is_face_in_middle(face_rectangle, frame_small.shape[1]):
+                    largest_face_rectangle = face_rectangle
+                    largest_face_area = area
 
-                    print(f"init_recognition_id: {init_recognition_id}")
-                    init_mode = False
-                else:
-                    print("Error: Unable to store init_user, make sure there's only one person in front of the camera")
-            elif not lock_flag and turtle_flag:
-                if results.multi_face_landmarks and len(results.multi_face_landmarks) == 1:
-                    init_distance = distance
-                    init_roll = roll
-                    init_vertical = vertical_distance
+            if largest_face_rectangle is not None:
+                if lock_flag and not turtle_flag:
+                    if len(face_rectangles) == 1:
+                        shape = shape_predictor(rgb_frame_small, face_rectangles[0])
+                        face_encoding = face_recognition_model.compute_face_descriptor(rgb_frame_small, shape)
+                        face_encoding = np.array(face_encoding)
+                        name = "init_user"
+                        face_encodings[name] = face_encoding
 
-                    init_mode = False
-                    print(f"init_distance: {init_distance}, init_roll: {init_roll}, init_vert: {init_vertical}")
-                else:
-                    print("Error: Unable to store init_distance and init_roll, make sure there's only one person in front of the camera")
-            elif lock_flag and turtle_flag:
-                if len(face_rectangles) == 1 and results.multi_face_landmarks and len(results.multi_face_landmarks) == 1:
-                    shape = shape_predictor(rgb_frame_small, face_rectangles[0])
-                    face_encoding = face_recognition_model.compute_face_descriptor(rgb_frame_small, shape)
-                    face_encoding = np.array(face_encoding)
-                    name = "init_user"
-                    face_encodings[name] = face_encoding
+                        init_recognition_id = name
 
-                    init_distance = distance
-                    init_roll = roll
-                    init_vertical = vertical_distance
-                    init_recognition_id = name
+                        print(f"init_recognition_id: {init_recognition_id}")
+                        init_mode = False
+                    else:
+                        print("Error: Unable to store init_user, make sure there's only one person in front of the camera")
+                elif not lock_flag and turtle_flag:
+                    if results.multi_face_landmarks and len(results.multi_face_landmarks) == 1:
+                        init_distance = distance
+                        init_roll = roll
+                        init_vertical = vertical_distance
 
-                    init_mode = False
-                    print(f"init_recognition_id: {init_recognition_id}, init_distance: {init_distance}, init_roll: {init_roll}, init_vert: {init_vertical}")
-                else:
-                    print("!Error: Unable to store init_user, init_distance, and init_roll, make sure there's only one person in front of the camera")
-                    #아무것도 감지되지 않는 상태에서 G눌렀을때 여기서 에러 띄워야 함 물론 저 위쪽도
+                        init_mode = False
+                        print(f"init_distance: {init_distance}, init_roll: {init_roll}, init_vert: {init_vertical}")
+                    else:
+                        print("Error: Unable to store init_distance and init_roll, make sure there's only one person in front of the camera")
+                elif lock_flag and turtle_flag:
+                    if len(face_rectangles) == 1 and results.multi_face_landmarks and len(results.multi_face_landmarks) == 1:
+                        shape = shape_predictor(rgb_frame_small, face_rectangles[0])
+                        face_encoding = face_recognition_model.compute_face_descriptor(rgb_frame_small, shape)
+                        face_encoding = np.array(face_encoding)
+                        name = "init_user"
+                        face_encodings[name] = face_encoding
+                        init_distance = distance
+                        init_roll = roll
+                        init_vertical = vertical_distance
+                        init_recognition_id = name
+
+                        init_mode = False
+                        print(f"init_recognition_id: {init_recognition_id}, init_distance: {init_distance}, init_roll: {init_roll}, init_vert: {init_vertical}")
+                    else:
+                        print("!Error: Unable to store init_user, init_distance, and init_roll, make sure there's only one person in front of the camera")
+                        #아무것도 감지되지 않는 상태에서 G눌렀을때 여기서 에러 띄워야 함 물론 저 위쪽도
             else:
-                print("Error: Invalid configuration. Please set at least one of lock_flag or turtle_flag to True.")
-
+                print("Error: Unable to store init_user, make sure there's a person in front of the camera")
+            if init_mode == False:
+                display_window = False
+                cv2.destroyAllWindows()
     video_capture.release()
     cv2.destroyAllWindows()
 
