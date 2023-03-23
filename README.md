@@ -1,6 +1,6 @@
 # Forcus on 42
-Developed by jinwoole, [juha](https://github.com/contemplation-person), [seonhoki02](https://github.com/kosuha)
-2023 코알리숑 해커톤에서 제작된 프로젝트입니다.
+Developed by jinwoole, [juha](https://github.com/contemplation-person), [seonhoki02](https://github.com/kosuha)  
+42서울 2023 코알리숑 해커톤에서 제작된 프로젝트입니다.
 이 프로젝트는 거북목을 예방하고, 화면 잠금을 잊어버림으로 인한 보안 문제를 해결하기 위해 개발되었습니다.
 
 ## 설치 방법
