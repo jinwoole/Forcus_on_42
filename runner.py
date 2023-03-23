@@ -1,3 +1,4 @@
+import os
 import subprocess
 import threading
 import pystray
@@ -25,9 +26,17 @@ def stop_script():
         process.terminate()
         print("Process terminated.")
 
+def delete_face_encodings_file():
+    file_path = "face_encodings.pkl"
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    else:
+        print("face_encodings.pkl file not found.")
+
 def exit_app(icon, item):
     if process and process.poll() is None:
         process.terminate()
+        delete_face_encodings_file()
     icon.stop()
 
 def on_start_click(icon, lock_flag, turtle_flag):
