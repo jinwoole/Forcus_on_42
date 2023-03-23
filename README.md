@@ -15,7 +15,6 @@ pip install -r requirements.txt
 설치가 완료되면, 프로젝트 폴더에서 다음 명령어를 실행하여 프로그램을 실행할 수 있습니다:
 
 ```sh
-Copy code
 python runner.py
 ```
 ## 사용 방법
@@ -25,7 +24,7 @@ python runner.py
 Lock: 화면 잠금 기능을 활성화 또는 비활성화합니다.
 Turtle: 거북목 예방 기능을 활성화 또는 비활성화합니다.
 Start: 프로그램을 시작합니다. Lock과 Turtle 중 하나 이상을 선택해야 합니다.
-Stop: 프로그램을 중지합니다.
+Stop: 프로그램 기능을 중지합니다.
 Exit: 프로그램을 종료합니다.
 프로그램을 종료하면, 프로그램이 생성한 인식 파일은 자동으로 삭제됩니다.
 
