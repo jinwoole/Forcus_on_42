@@ -9,7 +9,9 @@ Developed by jinwoole, [juha](https://github.com/contemplation-person), [seonhok
 2. 프로젝트 폴더로 이동한 후, 다음 명령어를 실행하여 필요한 라이브러리를 설치하세요:
 
 ```sh
-pip install -r requirements.txt
+pip install opencv-python
+pip install face-recognition
+pip install pystray
 ```
 ## 실행 방법
 
