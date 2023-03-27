@@ -35,3 +35,5 @@ Exit: 프로그램을 종료합니다.
 
 프로그램을 사용하기 전에 카메라를 통해 사용자의 얼굴이 잘 인식되는지 확인하시기 바랍니다. 얼굴 인식이 제대로 되지 않으면 프로그램의 기능이 정확하게 작동하지 않을 수 있습니다.  
 사용을 위해선 라이브러리 설치에 상당한 시간이 소요됩니다.   
+if error occurs, use python3 (and change the runner.py code to python -> python3).  
+ 
