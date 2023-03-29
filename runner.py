@@ -9,7 +9,7 @@ def run_face_recognition(lock_flag, turtle_flag):
         print("Error: Both lock_flag and turtle_flag are False. At least one should be True.")
         return
 
-    cmd = ["python", "face_recognition_pose.py", str(lock_flag), str(turtle_flag)]
+    cmd = ["python3", "face_recognition_pose.py", str(lock_flag), str(turtle_flag)]
 
     def run_script():
         global process

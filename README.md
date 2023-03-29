@@ -9,16 +9,16 @@ Developed by jinwoole, [juha](https://github.com/contemplation-person), [seonhok
 2. 프로젝트 폴더로 이동한 후, 다음 명령어를 실행하여 필요한 라이브러리를 설치하세요:
 
 ```sh
-pip install opencv-python
-pip install face-recognition
-pip install pystray
+pip3 install opencv-python
+pip3 install face-recognition
+pip3 install pystray
 ```
 ## 실행 방법
 
 설치가 완료되면, 프로젝트 폴더에서 다음 명령어를 실행하여 프로그램을 실행할 수 있습니다:
 
 ```sh
-python runner.py
+python3 runner.py
 ```
 ## 사용 방법
 

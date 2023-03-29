@@ -1,3 +1,5 @@
+#-*- coding:utf-8 -*-
+
 import cv2
 import dlib
 import face_recognition
@@ -51,8 +53,8 @@ def delete_face_encodings():
 
 def initialize_face_recognition():
     face_detector = dlib.get_frontal_face_detector()
-    shape_predictor_path = 'shape_predictor_68_face_landmarks.dat'
-    face_recognition_model_path = 'dlib_face_recognition_resnet_model_v1.dat'
+    shape_predictor_path = './models/shape_predictor_68_face_landmarks.dat'
+    face_recognition_model_path = './models/dlib_face_recognition_resnet_model_v1.dat'
 
     shape_predictor = dlib.shape_predictor(shape_predictor_path)
     face_recognition_model = dlib.face_recognition_model_v1(face_recognition_model_path)
