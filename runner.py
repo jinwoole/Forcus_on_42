@@ -1,4 +1,12 @@
 import os
+import sys
+
+#import packages! ha!
+cwd = os.getcwd()
+print(cwd)
+packages_path = os.path.join(cwd, "packages")
+sys.path.insert(0, packages_path)
+
 import subprocess
 import threading
 import pystray

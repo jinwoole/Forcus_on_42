@@ -1,12 +1,18 @@
 #-*- coding:utf-8 -*-
+import os
+import sys
+
+#import packages
+cwd = os.getcwd()
+print(cwd)
+packages_path = os.path.join(cwd, "packages")
+sys.path.insert(0, packages_path)
 
 import cv2
 import dlib
 import face_recognition
 import numpy as np
 import pickle
-import os
-import sys
 import mediapipe as mp
 import math
 import atexit #얼굴 정보 삭제를 위함
@@ -24,10 +30,10 @@ KNOWN_FACE_WIDTH = 0.15
 FOCAL_LENGTH = 640
 
 #안면인식모델 정확도
-REC_JITTER = 12;
+REC_JITTER = 12
 
 #안면인식 판단 정확도 -> 낮을수록 엄격
-STRICT_RATIO = 0.41;
+STRICT_RATIO = 0.41
 
 #안면인식 데이터 저장되는 곳
 current_dir = current_executable_path = os.path.dirname(os.path.abspath(__file__))
