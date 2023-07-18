@@ -6,7 +6,10 @@ Developed by jinwoole, [juha](https://github.com/contemplation-person), [seonhok
 ## 설치 방법
 
 1. 이 프로젝트를 클론 또는 다운로드하세요.  
-2. 프로젝트 폴더로 이동한 후, 다음 명령어를 실행하여 필요한 라이브러리를 설치하세요:
+2. 프로젝트 폴더로 이동한 후, 다음 명령어를 실행하여 필요한 라이브러리를 설치하세요.
+
+## 주의사항
+매우 많은 용량(최소 1.7GB)과 시간(약 2시간)이 소요됩니다.
 
 ```sh
 pip3 install opencv-python
